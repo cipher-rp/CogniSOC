@@ -1,0 +1,266 @@
+<group name="local,custom">
+
+    <rule id="110001" level="10">
+      <if_sid>60114</if_sid> 
+      <description>Authentication [Critical]: User account LOCKED OUT - $(win.eventdata.targetUserName)</description>
+      <mitre><id>T1078.002</id></mitre>
+      <group>authentication,account_lockout,pci_dss_8.1.6,</group>
+    </rule>
+  
+    <rule id="110002" level="12">
+      <if_sid>60122</if_sid> 
+      <field name="win.eventdata.subStatus">^0xC0000072$</field>
+      <description>Authentication [Critical]: Attempt to login to a DISABLED account - $(win.eventdata.targetUserName)</description>
+      <mitre><id>T1078.002</id></mitre>
+      <group>authentication_failed,disabled_account,</group>
+    </rule>
+  
+    <rule id="110003" level="10" frequency="5" timeframe="180">
+        <if_matched_sid>60122</if_matched_sid>
+        <same_field>win.eventdata.targetUserName</same_field>
+        <description>Authentication [Warning]: BRUTE FORCE attempt detected for user $(win.eventdata.targetUserName)</description>
+        <mitre><id>T1110.001</id></mitre>
+        <group>authentication_failed,brute_force,</group>
+      </rule>
+  
+    <rule id="110004" level="14" timeframe="240">
+      <if_sid>60106, 60118</if_sid> 
+      <if_matched_sid>110003</if_matched_sid>
+      <same_field>win.eventdata.targetUserName</same_field>
+      <description>Authentication [CRITICAL]: SUCCESSFUL login after Brute Force attack for user $(win.eventdata.targetUserName)</description>
+      <mitre><id>T1110.001</id><id>T1078.002</id></mitre>
+      <group>authentication_success,compromised_account,</group>
+    </rule>
+  
+    <rule id="110005" level="8">
+      <if_sid>60106, 60118</if_sid>
+      <field name="win.eventdata.logonType">^10$</field>
+      <field name="win.eventdata.targetUserName" type="pcre2" negate="yes">^DWM-|^UMFD-</field>
+      <description>Authentication [Info]: RDP Session started by $(win.eventdata.targetUserName) from IP: $(win.eventdata.ipAddress)</description>
+      <mitre><id>T1021.001</id></mitre>
+      <group>authentication_success,rdp_login,</group>
+    </rule>
+  
+    <rule id="110006" level="7">
+      <if_sid>60106, 60118, 5715</if_sid> <time>7 pm - 7 am</time>
+      <field name="win.eventdata.targetUserName" type="pcre2" negate="yes">^SYSTEM$|^LOCAL SERVICE$|.*\$</field>
+      <description>Authentication [Warning]: User login outside normal business hours</description>
+      <mitre><id>T1078</id></mitre>
+      <group>authentication_success,after_hours,</group>
+    </rule>
+  
+    <rule id="110007" level="12">
+      <if_sid>5715, 5303</if_sid> <match>root</match>
+      <description>Authentication [Critical]: Direct ROOT login detected on $(hostname)</description>
+      <mitre><id>T1078.001</id></mitre>
+      <group>authentication_success,root_login,</group>
+    </rule>
+  
+    <rule id="110008" level="8">
+      <if_sid>5402</if_sid> 
+      <description>Authentication [Info]: Sudo command executed by user $(dstuser)</description>
+      <mitre><id>T1548.003</id></mitre>
+      <group>privilege_escalation,sudo_usage,</group>
+    </rule>
+  
+    <rule id="110009" level="9">
+      <if_sid>5715</if_sid>
+      <match>Accepted password</match>
+      <description>Authentication [Warning]: SSH login using PASSWORD instead of RSA Key for user $(dstuser)</description>
+      <mitre><id>T1078.001</id></mitre>
+      <group>authentication_success,insecure_ssh,</group>
+    </rule>
+  
+    <rule id="110010" level="12">
+      <if_sid>60106, 5715</if_sid>
+      <field name="geoip.country_name" negate="yes">India</field> 
+      <field name="win.eventdata.ipAddress" type="pcre2" negate="yes">^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.</field>
+      <description>Authentication [Critical]: Login from UNUSUAL GEO-LOCATION ($(geoip.country_name))</description>
+      <mitre><id>T1078</id></mitre>
+      <group>authentication_success,geo_anomaly,</group>
+    </rule>
+
+    <rule id="110020" level="8">
+        <if_sid>60106</if_sid>
+        <field name="win.system.eventID">^4720$</field>
+        <description>Account Mgmt [Info]: New user account CREATED - $(win.eventdata.targetUserName)</description>
+        <mitre><id>T1136.001</id></mitre>
+        <group>account_management,new_account,</group>
+      </rule>
+    
+      <rule id="110021" level="8">
+        <if_sid>60106</if_sid>
+        <field name="win.system.eventID">^4726$</field>
+        <description>Account Mgmt [Info]: User account DELETED - $(win.eventdata.targetUserName)</description>
+        <mitre><id>T1098</id></mitre>
+        <group>account_management,deleted_account,</group>
+      </rule>
+    
+      <rule id="110022" level="12">
+        <if_sid>60106</if_sid>
+        <field name="win.system.eventID">^4732$</field>
+        <field name="win.eventdata.targetUserName" type="pcre2">(?i)administrators</field>
+        <description>Account Mgmt [Critical]: User added to ADMINISTRATORS group</description>
+        <mitre><id>T1098</id><id>T1078.002</id></mitre>
+        <group>account_management,privilege_escalation,</group>
+      </rule>
+    
+      <rule id="110023" level="9">
+        <if_sid>60106</if_sid>
+        <field name="win.system.eventID">^4724$</field>
+        <description>Account Mgmt [Warning]: Password RESET attempt by administrator for user $(win.eventdata.targetUserName)</description>
+        <mitre><id>T1098</id></mitre>
+        <group>account_management,password_reset,</group>
+      </rule>
+    
+      <rule id="110030" level="12">
+        <if_matched_group>syscheck</if_matched_group>
+        <field name="file" type="pcre2">^/etc/passwd$|^/etc/shadow$|^/etc/sudoers$</field>
+        <description>FIM [Critical]: Critical Linux system file modified: $(file)</description>
+        <mitre><id>T1003.008</id></mitre>
+        <group>syscheck,critical_file,</group>
+      </rule>
+    
+      <rule id="110031" level="12">
+        <if_matched_group>syscheck</if_matched_group>
+        <field name="file" type="pcre2">(?i)C:\\Windows\\System32\\.*\.exe$</field>
+        <description>FIM [Critical]: Executable modified in Windows System32: $(file)</description>
+        <mitre><id>T1543</id></mitre>
+        <group>syscheck,system32_change,</group>
+      </rule>
+    
+      <rule id="110032" level="10">
+        <if_matched_group>syscheck</if_matched_group>
+        <field name="file" type="pcre2">(?i)\\AppData\\Local\\Temp\\.*\.exe$|^/tmp/.*</field>
+        <match>added</match>
+        <description>FIM [Warning]: Executable file dropped in TEMP directory: $(file)</description>
+        <mitre><id>T1036</id></mitre>
+        <group>syscheck,suspicious_file,</group>
+      </rule>
+    
+      <rule id="110040" level="12">
+        <if_group>windows</if_group>
+        <field name="win.system.eventID">^1$|^4104$</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)-enc|-nop|bypass|downloadstring|invoke-webrequest|invoke-expression</field>
+        <description>Malware [Critical]: Suspicious PowerShell execution detected (Obfuscation/Download)</description>
+        <mitre><id>T1059.001</id></mitre>
+        <group>execution,powershell,malware,</group>
+      </rule>
+    
+      <rule id="110041" level="13">
+        <if_group>windows</if_group>
+        <field name="win.system.eventID">^1$</field>
+        <field name="win.eventdata.parentImage" type="pcre2">(?i)winword\.exe$|excel\.exe$|powerpnt\.exe$|acrord32\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)cmd\.exe$|powershell\.exe$|wscript\.exe$|cscript\.exe$</field>
+        <description>Malware [Critical]: Office/PDF document spawned a command shell (Possible Macro Malware)</description>
+        <mitre><id>T1204.002</id><id>T1059</id></mitre>
+        <group>execution,phishing,malware,</group>
+      </rule>
+
+      <rule id="110042" level="13">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^1$</field>
+          <field name="win.eventdata.commandLine" type="pcre2">(?i)nc\.exe.*-e|powershell.*tcpclient|bash\s*-i</field>
+          <description>Malware [CRITICAL]: Reverse Shell execution detected!</description>
+          <mitre><id>T1059</id><id>T1090</id></mitre>
+          <group>execution,reverse_shell,malware,</group>
+        </rule>
+    
+      <rule id="110049" level="0">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^3$</field>
+          <description>Network Connection Base Rule</description>
+        </rule>
+      
+        <rule id="110050" level="10" frequency="15" timeframe="60">
+          <if_matched_sid>110049</if_matched_sid>
+          <same_field>win.eventdata.sourceIp</same_field>
+          <description>Network [Warning]: Possible PORT SCANNING detected from IP: $(win.eventdata.sourceIp)</description>
+          <mitre><id>T1046</id></mitre>
+          <group>network,reconnaissance,port_scan,</group>
+        </rule>
+
+      <rule id="110051" level="14">
+                <if_group>windows</if_group>
+                <field name="win.system.eventID">^3$</field>
+                <field name="win.eventdata.destinationIp" type="pcre2">^185\.153\.|^193\.</field> 
+                <description>Network [CRITICAL]: Connection to known malicious/Blacklisted IP</description>
+                <mitre><id>T1071</id></mitre>
+                <group>network,c2_communication,</group>
+              </rule>
+    
+      <rule id="110060" level="14">
+        <if_group>windows</if_group>
+        <field name="win.system.eventID">^1102$|^104$</field>
+        <description>Tampering [CRITICAL]: Windows Security/System Audit Logs CLEARED by $(win.eventdata.subjectUserName)</description>
+        <mitre><id>T1070.001</id></mitre>
+        <group>defense_evasion,log_cleared,</group>
+      </rule>
+    
+      <rule id="110061" level="13">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^4719$</field>
+          <description>Tampering [Critical]: System Audit Policy changed/tampered</description>
+          <mitre><id>T1562.001</id></mitre>
+          <group>defense_evasion,audit_tampering,</group>
+        </rule>
+
+      <rule id="110062" level="13">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^1100$</field>
+          <description>Tampering [CRITICAL]: Event log service STOPPED or DISABLED</description>
+          <mitre><id>T1562.001</id></mitre>
+          <group>defense_evasion,service_disabled,</group>
+        </rule>
+      
+      <rule id="110070" level="12">
+        <if_group>windows</if_group>
+        <field name="win.system.eventID">^7045$|^4697$</field>
+        <description>System [Critical]: New Windows Service INSTALLED - $(win.eventdata.serviceName)</description>
+        <mitre><id>T1543.003</id></mitre>
+        <group>persistence,service_creation,</group>
+      </rule>
+    
+      <rule id="110071" level="10">
+        <if_group>windows</if_group>
+        <field name="win.system.eventID">^4698$</field>
+        <description>System [Warning]: Scheduled Task CREATED - Potential Persistence</description>
+        <mitre><id>T1053.005</id></mitre>
+        <group>persistence,scheduled_task,</group>
+      </rule>
+
+      <rule id="110072" level="12">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^7036$</field>
+          <field name="win.eventdata.param1" type="pcre2">(?i)antivirus|wazuh|windows defender|sysmon</field>
+          <match>stopped</match>
+          <description>System [CRITICAL]: Critical security service STOPPED - $(win.eventdata.param1)</description>
+          <mitre><id>T1562.001</id></mitre>
+          <group>defense_evasion,service_stopped,</group>
+        </rule>
+      
+        <rule id="110073" level="13">
+          <if_group>windows</if_group>
+          <field name="win.system.eventID">^12$|^13$|^14$</field>
+          <field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion\\Run|CurrentVersion\\RunOnce</field>
+          <description>System [CRITICAL]: Startup Persistence mechanism created via Registry Run Keys</description>
+          <mitre><id>T1547.001</id></mitre>
+          <group>persistence,registry_run,</group>
+        </rule>
+
+       <rule id="110075" level="12">
+           <if_group>sysmon_event1</if_group>
+           <match>cmd.exe|powershell.exe|notepad.exe</match>
+           <time>00:00 - 05:00</time>
+           <description>CRITICAL ALERT: Suspicious Admin Tool executed at midnight!</description>
+           <mitre><id>T1059</id></mitre>
+         </rule>
+
+       <rule id="110080" level="7">
+           <if_sid>60106</if_sid>
+           <field name="win.system.eventID">^6416$</field>
+           <description>USB Device Plugged In: $(win.eventdata.deviceDescription)</description>
+           <group>policy_violation,usb_detect,mitre_t1200</group>
+       </rule>
+
+</group>

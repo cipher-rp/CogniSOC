@@ -1,0 +1,10 @@
+SOC INCIDENT REPORT
+===================
+Generated On: 2026-01-29 09:58:17.642860
+
+Source IP        : 192.168.163.128:0
+Attack Type      : ICMP Flood
+Packet Count     : 10
+Severity         : HIGH
+Recommended Action: Investigate source, apply rate limiting
+----------------------------------------

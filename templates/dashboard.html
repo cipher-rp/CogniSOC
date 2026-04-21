@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CogniSOC | Advanced Threat Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body { background-color: #050a15; color: #c9d1d9; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        .navbar-custom { background-color: #0b1426; border-bottom: 1px solid #1f3a5f; padding: 12px 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .brand-text { font-size: 1.8rem; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* CARDS & HOVER */
+        .card { background-color: #0d192b; border: 1px solid #1f3a5f; border-radius: 10px; box-shadow: 0 6px 15px rgba(0,0,0,0.4); margin-bottom: 25px; transition: all 0.3s ease-in-out; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.4); }
+        .card-header { background-color: rgba(31, 58, 95, 0.3); border-bottom: 1px solid #1f3a5f; color: #8ab4f8; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; padding: 12px 15px; }
+        
+        .kpi-number { font-size: 2.5rem; font-weight: bold; line-height: 1; margin-top: 10px; transition: all 0.3s ease; }
+        .card:hover .kpi-number { transform: scale(1.05); }
+        .text-neon-blue { color: #00f2fe; text-shadow: 0 0 10px rgba(0, 242, 254, 0.4); }
+        .text-critical { color: #ff3366; text-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
+        .text-warning-custom { color: #ffcc00; }
+        .text-success-custom { color: #00ff99; }
+        
+        /* TABLE & HOVER */
+        .table-dark { background-color: transparent; color: #c9d1d9; font-size: 0.9rem; }
+        .table-dark th { background-color: #0b1426; border-bottom: 2px solid #00f2fe; color: #fff; text-transform: uppercase; font-size: 0.8rem; position: sticky; top: 0; z-index: 10;}
+        .table-dark td { border-bottom: 1px solid #1f3a5f; vertical-align: middle; transition: all 0.2s; }
+        .table-hover tbody tr { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .table-hover tbody tr:hover { background-color: #122138; box-shadow: inset 2px 0 0 #00f2fe; }
+        .btn-outline-info { transition: all 0.3s ease; }
+        .btn-outline-info:hover { box-shadow: 0 0 12px rgba(0, 242, 254, 0.6); background-color: #00f2fe; color: #000; font-weight: bold; }
+
+        /* FULL SCREEN TABLE MODE */
+        .table-fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 9999; background-color: #050a15; margin: 0 !important; padding: 15px !important; border-radius: 0 !important; overflow: hidden; }
+        .table-fullscreen .table-responsive { max-height: calc(100vh - 80px) !important; }
+
+        .timestamp-text { color: #00f2fe; font-family: monospace; font-size: 0.95rem; }
+        .badge { font-size: 0.75rem; padding: 5px 8px; letter-spacing: 0.5px; }
+        .badge-critical { background-color: rgba(255, 51, 102, 0.2); border: 1px solid #ff3366; color: #ff3366; }
+        .badge-high { background-color: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00; }
+        .badge-medium { background-color: rgba(0, 242, 254, 0.2); border: 1px solid #00f2fe; color: #00f2fe; }
+        .badge-low { background-color: rgba(138, 180, 248, 0.2); border: 1px solid #8ab4f8; color: #8ab4f8; }
+        
+        .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: center;}
+        .chart-inner-text { position: absolute; text-align: center; pointer-events: none; }
+        .chart-inner-text h3 { margin: 0; font-size: 1.8rem; font-weight: bold; color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.3);}
+        .chart-inner-text span { font-size: 0.7rem; color: #8ab4f8; text-transform: uppercase;}
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand brand-text" href="#">🛡️ CogniSOC <span style="font-size: 0.8rem; color: #8ab4f8; font-weight: normal;">v1.0 (Enterprise XDR)</span></a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="badge bg-success me-3 p-2"><span class="spinner-grow spinner-grow-sm me-1" style="width: 10px; height: 10px;"></span>Auto-Sync</span>
+                <select id="timeFilter" class="form-select form-select-sm text-light border-info shadow-none" style="background-color: #0d192b; width: 150px; cursor: pointer; transition: 0.3s;" onchange="updateDashboard()">
+                    <option value="1h">Last 1 Hour</option>
+                    <option value="24h" selected>Last 24 Hours</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container-fluid px-4 mt-3" id="quarantine-banner-container" style="display: none; transition: opacity 0.5s;">
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" style="background-color: rgba(255, 51, 102, 0.15); border: 1px solid #ff3366; color: #ff3366; box-shadow: 0 0 15px rgba(255, 51, 102, 0.4); border-radius: 8px;">
+            <div class="d-flex align-items-center">
+                <span style="font-size: 1.5rem; margin-right: 15px;">🚨</span>
+                <div>
+                    <h6 class="mb-0 fw-bold">ACTIVE THREAT CONTAINED</h6>
+                    <small id="quarantine-text">BLOCKED IP: </small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="badge bg-danger me-3" style="font-size: 0.9rem;">Auto-dismiss in <span id="banner-timer">60</span>s</span>
+                <button type="button" class="btn-close btn-close-white" onclick="closeBanner()" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4 px-4">
+        <div class="row text-center">
+            <div class="col-xl-3 col-md-6"><div class="card p-3 h-100"><div class="card-header border-0 bg-transparent">Total Ingested Alerts</div><div class="kpi-number text-neon-blue" id="kpi-total">0</div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card p-3 h-100"><div class="card-header border-0 bg-transparent">Critical Threats</div><div class="kpi-number text-critical" id="kpi-critical">0</div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card p-3 h-100"><div class="card-header border-0 bg-transparent">Auth Failures</div><div class="kpi-number text-warning-custom" id="kpi-auth-fail">0</div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card p-3 h-100"><div class="card-header border-0 bg-transparent">Active Agents</div><div class="kpi-number text-success-custom" id="kpi-agents">0</div></div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-xl-3 col-md-6"><div class="card"><div class="card-header">MITRE ATT&CK</div><div class="card-body chart-container"><canvas id="mitreChart"></canvas><div class="chart-inner-text"><h3 id="inner-mitre">0</h3><span>Tactics</span></div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card"><div class="card-header">File Integrity (FIM)</div><div class="card-body chart-container"><canvas id="fimChart"></canvas></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card"><div class="card-header">Vulnerabilities</div><div class="card-body chart-container"><canvas id="vulnChart"></canvas><div class="chart-inner-text"><h3 id="inner-vuln">0</h3><span>CVEs</span></div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card"><div class="card-header d-flex justify-content-between"><span>Top Active Agents</span><span class="badge bg-success">Online</span></div><div class="card-body chart-container"><canvas id="agentChart"></canvas></div></div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card" id="log-table-card">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #0b1426;">
+                        <span>Security Event Stream</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light me-2" id="expandBtn" onclick="toggleFullScreen()">⛶ Expand</button>
+                            <button class="btn btn-sm btn-outline-info" onclick="exportCSV()">Export CSV</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                            <table class="table table-dark table-hover mb-0 align-middle">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-4">Timestamp</th>
+                                        <th>Source / Agent</th>
+                                        <th>Category</th>
+                                        <th>Description</th>
+                                        <th>Severity</th>
+                                        <th class="text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="background-color: #0b1426; border: 1px solid #00f2fe; box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);">
+                <div class="modal-header" style="border-bottom: 1px solid #1f3a5f;">
+                    <h5 class="modal-title fw-bold text-neon-blue">Detailed Telemetry</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h5 class="text-warning-custom mb-3" id="modal-desc"></h5>
+                    <div class="row text-muted mb-3">
+                        <div class="col-6"><strong>Endpoint:</strong> <span id="modal-source" class="text-light"></span></div>
+                        <div class="col-6"><strong>Time:</strong> <span id="modal-time" class="timestamp-text"></span></div>
+                    </div>
+                    <h6 class="text-secondary" style="font-size: 0.8rem; text-transform: uppercase;">Raw JSON Payload:</h6>
+                    <pre style="background-color: #050a15; color: #00ff99; padding: 15px; border-radius: 5px; font-family: monospace; border: 1px solid #1f3a5f; max-height: 400px; overflow-y: auto;" id="modal-raw-log"></pre>
+                </div>
+                <div class="modal-footer d-flex justify-content-between" style="border-top: 1px solid #1f3a5f;">
+                    <span class="text-muted" style="font-size: 0.8rem;">ID: <span id="modal-id">--</span></span>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-sm btn-danger fw-bold" style="box-shadow: 0 0 10px rgba(255,51,102,0.4);">Block Source IP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart Initialization
+        Chart.defaults.color = '#8ab4f8'; Chart.defaults.borderColor = '#1f3a5f';
+        const ctxMitre = document.getElementById('mitreChart').getContext('2d'); const mitreChart = new Chart(ctxMitre, { type: 'doughnut', data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#1f3a5f'], borderWidth: 0, hoverOffset: 4 }] }, options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false } });
+        const ctxFim = document.getElementById('fimChart').getContext('2d'); const fimChart = new Chart(ctxFim, { type: 'bar', data: { labels: ['Added', 'Mod', 'Del'], datasets: [{ data: [0,0,0], backgroundColor: ['#00ff99', '#ffcc00', '#ff3366'], borderRadius: 4, hoverBackgroundColor: '#fff' }] }, options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false }, ticks: { color: '#8ab4f8' } } }, maintainAspectRatio: false } });
+        const ctxVuln = document.getElementById('vulnChart').getContext('2d'); const vulnChart = new Chart(ctxVuln, { type: 'doughnut', data: { labels: ['High', 'Med', 'Low'], datasets: [{ data: [0,0,0], backgroundColor: ['#ff3366', '#ffcc00', '#00f2fe'], borderWidth: 0, hoverOffset: 4 }] }, options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false } });
+        const ctxAgent = document.getElementById('agentChart').getContext('2d'); const agentChart = new Chart(ctxAgent, { type: 'bar', data: { labels: [], datasets: [{ data: [], backgroundColor: '#8ab4f8', borderRadius: 4, hoverBackgroundColor: '#00f2fe' }] }, options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { display: false }, ticks: { color: '#8ab4f8' } } }, maintainAspectRatio: false } });
+
+        // GLOBAL VARIABLES
+        let globalAlerts = []; 
+        let knownBlockedIPs = ""; 
+        let countdownInterval = null;
+        let isFirstLoad = true;
+
+        function getBadgeClass(level) { return level === 'Critical' ? 'badge-critical' : level === 'High' ? 'badge-high' : level === 'Medium' ? 'badge-medium' : 'badge-low'; }
+
+        // Expand Table Function
+        function toggleFullScreen() {
+            let card = document.getElementById('log-table-card');
+            let btn = document.getElementById('expandBtn');
+            card.classList.toggle('table-fullscreen');
+            if (card.classList.contains('table-fullscreen')) {
+                btn.innerHTML = '✖ Close Full Screen'; btn.classList.replace('btn-outline-light', 'btn-danger');
+            } else {
+                btn.innerHTML = '⛶ Expand'; btn.classList.replace('btn-danger', 'btn-outline-light');
+            }
+        }
+
+        // BANNER LOGIC
+        function closeBanner() {
+            document.getElementById('quarantine-banner-container').style.display = 'none';
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+
+        function triggerBanner(ipsStr) {
+            document.getElementById('quarantine-text').innerHTML = "The following entities were just QUARANTINED: <strong style='color: #fff; letter-spacing: 1px;'>" + ipsStr + "</strong>";
+            document.getElementById('quarantine-banner-container').style.display = 'block';
+            
+            let timeLeft = 60;
+            document.getElementById('banner-timer').innerText = timeLeft;
+            
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('banner-timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    closeBanner(); 
+                }
+            }, 1000);
+        }
+
+        // 🌟 DASHBOARD DATA FETCH (Real MITRE Integration) 🌟
+        function updateDashboard() {
+            let selectedTime = document.getElementById('timeFilter').value;
+            let noCacheUrl = '/api/alerts?timeframe=' + selectedTime + '&_t=' + new Date().getTime();
+
+            fetch(noCacheUrl, { cache: "no-store" })
+                .then(response => response.json())
+                .then(data => {
+                    globalAlerts = data.recent_alerts; 
+                    
+                    // State Management for Banner
+                    let currentBlocked = (data.blocked_ips && data.blocked_ips.length > 0) ? data.blocked_ips.join(', ') : "";
+                    if (isFirstLoad) {
+                        knownBlockedIPs = currentBlocked;
+                        isFirstLoad = false;
+                    } else {
+                        if (currentBlocked !== "" && currentBlocked !== knownBlockedIPs) {
+                            knownBlockedIPs = currentBlocked; 
+                            triggerBanner(currentBlocked); 
+                        } else if (currentBlocked === "") {
+                            knownBlockedIPs = ""; 
+                        }
+                    }
+
+                    // Update KPIs
+                    document.getElementById('kpi-total').innerText = data.kpis.total_alerts.toLocaleString();
+                    document.getElementById('kpi-critical').innerText = data.kpis.critical_alerts.toLocaleString();
+                    document.getElementById('kpi-auth-fail').innerText = data.kpis.auth_failures.toLocaleString();
+                    document.getElementById('kpi-agents').innerText = data.kpis.active_agents;
+
+                    // Update Base Charts
+                    fimChart.data.datasets[0].data = [data.charts.fim.added, data.charts.fim.modified, data.charts.fim.deleted]; fimChart.update();
+                    vulnChart.data.datasets[0].data = [data.charts.vuln.high, data.charts.vuln.medium, data.charts.vuln.low]; vulnChart.update();
+                    document.getElementById('inner-vuln').innerText = data.charts.vuln.high + data.charts.vuln.medium + data.charts.vuln.low;
+
+                    agentChart.data.labels = data.charts.agents_labels;
+                    agentChart.data.datasets[0].data = data.charts.agents_data;
+                    agentChart.update();
+
+                    // 🌟 REAL MITRE CHART LOGIC 🌟
+                    let mitreLabels = Object.keys(data.charts.mitre);
+                    let mitreData = Object.values(data.charts.mitre);
+                    
+                    if (mitreLabels.length > 0) {
+                        mitreChart.data.labels = mitreLabels;
+                        mitreChart.data.datasets[0].data = mitreData;
+                        // Naye Neon Colors agar bohot saare alag-alag tactics aate hain
+                        mitreChart.data.datasets[0].backgroundColor = ['#00f2fe', '#ff3366', '#ffcc00', '#00ff99', '#b366ff', '#ff66b3', '#00cccc']; 
+                        
+                        let mitreTotal = mitreData.reduce((a, b) => a + b, 0);
+                        document.getElementById('inner-mitre').innerText = mitreTotal;
+                    } else {
+                        mitreChart.data.labels = ['No Data'];
+                        mitreChart.data.datasets[0].data = [1];
+                        mitreChart.data.datasets[0].backgroundColor = ['#1f3a5f']; // Dark mode background agar khali hai
+                        document.getElementById('inner-mitre').innerText = "0";
+                    }
+                    mitreChart.update();
+
+                    // Update Table
+                    const tbody = document.getElementById('table-body');
+                    tbody.innerHTML = ''; 
+                    data.recent_alerts.forEach((alert, index) => {
+                        let row = `<tr>
+                            <td class="ps-4 timestamp-text">${alert.time}</td>
+                            <td class="text-neon-blue fw-bold">${alert.source}</td>
+                            <td><span class="badge border border-secondary text-light">${alert.technique}</span></td>
+                            <td class="text-light">${alert.desc}</td>
+                            <td><span class="badge ${getBadgeClass(alert.level)}">${alert.level}</span></td>
+                            <td class="text-end pe-4"><button class="btn btn-sm btn-outline-info py-0 px-3" style="font-size: 0.75rem;" onclick="showLogDetails(${index}, event)">Inspect</button></td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                });
+        }
+
+        // Modal Logic
+        function showLogDetails(index, event) {
+            if(event) event.stopPropagation();
+            let alertInfo = globalAlerts[index];
+            document.getElementById('modal-desc').innerText = alertInfo.desc;
+            document.getElementById('modal-source').innerText = alertInfo.source;
+            document.getElementById('modal-time').innerText = alertInfo.time;
+            document.getElementById('modal-id').innerText = "EVT-" + Math.floor(Math.random() * 90000 + 10000);
+            
+            let rawJsonStr = JSON.stringify(alertInfo.raw || { "status": "Real raw data format not found" }, null, 4);
+            document.getElementById('modal-raw-log').innerText = rawJsonStr;
+            
+            var logModal = new bootstrap.Modal(document.getElementById('logModal'));
+            logModal.show();
+        }
+
+        // CSV Export Logic
+        function exportCSV() {
+            let csv = 'Timestamp,Source,Tactic,Description,Severity\n';
+            let rows = document.querySelectorAll("table tr");
+            for (let i = 1; i < rows.length; i++) {
+                let cols = rows[i].querySelectorAll("td");
+                let rowData = [];
+                for (let j = 0; j < cols.length - 1; j++) { rowData.push('"' + cols[j].innerText.replace(/"/g, '""') + '"'); }
+                csv += rowData.join(",") + "\n";
+            }
+            let link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            link.target = '_blank'; link.download = 'CogniSOC_Report.csv';
+            link.click();
+        }
+
+        // Loop
+        setInterval(updateDashboard, 1000); 
+        updateDashboard(); 
+    </script>
+</body>
+</html>
