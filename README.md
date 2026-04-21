@@ -15,7 +15,8 @@ Designed for security analysts, this project cuts through log noise to deliver h
 * **Hardware Monitoring:** Custom XML rules injected into Wazuh to instantly detect and alert on unauthorized USB device connections on Windows and Linux endpoints.
 
 ## 📸 Dashboard Preview
-*(Add a screenshot of your dashboard here: `![Dashboard](link_to_image)`)*
+<img width="1280" height="800" alt="Screenshot From 2026-04-21 18-32-16" src="https://github.com/user-attachments/assets/f21b334e-d172-4313-8d97-283f9e807c42" />
+
 
 ## 🛠️ Technology Stack
 * **Backend:** Python 3, Flask
