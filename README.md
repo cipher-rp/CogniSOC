@@ -1,6 +1,6 @@
 # 🛡️ CogniSOC - Enterprise XDR & SIEM Engine
 
-![CogniSOC Banner](https://img.shields.io/badge/Status-Active-brightgreen) ![Version](https://img.shields.io/badge/Version-4.2_Enterprise-blue) ![Python](https://img.shields.io/badge/Python-3.x-yellow)
+![CogniSOC Banner](https://img.shields.io/badge/Status-Active-brightgreen) ![Version](https://img.shields.io/badge/Version-1.0_Enterprise-blue) ![Python](https://img.shields.io/badge/Python-3.x-yellow)
 
 ## 🚀 Overview
 **CogniSOC** is a custom-built, lightweight Extended Detection and Response (XDR) and SIEM dashboard. It integrates network (NIDS) and host-based (HIDS) telemetry to provide real-time threat monitoring, **MITRE ATT&CK** mapping, and an automated Active Response (Auto-Ban) engine.
