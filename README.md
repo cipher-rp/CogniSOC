@@ -30,7 +30,7 @@ The power of CogniSOC lies in its distributed monitoring architecture. The setup
 5. **Visualization:** The Flask-based dashboard fetches this processed data to present a real-time SOC view.
 
 ### 📊 Logic Flow Diagram
-
+```text
 [ Endpoints ] --------> [ Wazuh Manager ] 
 (Win/Linux)    (Logs)   (Rule Engine)
                             |
@@ -40,6 +40,8 @@ The power of CogniSOC lies in its distributed monitoring architecture. The setup
                             v
                     [ CogniSOC Dashboard ]
                        (Flask / UI)
+
+```
 
 ## 📸 Dashboard Preview
 <img width="1280" height="800" alt="Screenshot From 2026-04-21 18-32-16" src="https://github.com/user-attachments/assets/f21b334e-d172-4313-8d97-283f9e807c42" />
