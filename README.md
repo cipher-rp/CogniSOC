@@ -14,6 +14,33 @@ Designed for security analysts, this project cuts through log noise to deliver h
 * **Dynamic MITRE ATT&CK Analytics:** Maps endpoint events directly to MITRE tactics (e.g., T1200 Hardware Additions) in a real-time visual doughnut chart.
 * **Hardware Monitoring:** Custom XML rules injected into Wazuh to instantly detect and alert on unauthorized USB device connections on Windows and Linux endpoints.
 
+## 🏗️ System Architecture & Data Flow
+
+The power of CogniSOC lies in its distributed monitoring architecture. The setup ensures that telemetry from every corner of the network is centralized, analyzed, and acted upon.
+
+### 1. The Deployment Model
+* **Central Manager (Kali Linux):** Acts as the 'Brain'. It hosts the Wazuh Manager, Snort 3, and the CogniSOC Python Backend.
+* **Endpoints (Agents):** Wazuh Agents are deployed on Windows 10 and Linux machines to monitor local system events, FIM, and hardware changes.
+
+### 2. Data Pipeline
+1. **Log Collection:** Wazuh Agents collect system logs and send them to the Manager via an encrypted channel (Port 1514).
+2. **Real-Time Processing:** The Wazuh Manager processes these logs against custom rules (like our USB detection rule) and writes alerts to `alerts.json`.
+3. **Network Sensing:** Simultaneously, Snort 3 monitors the network interface and logs malicious traffic patterns.
+4. **Analysis Engine:** The `alert_analyzer.py` script tail-reads these JSON logs, calculates risk scores, and triggers `iptables` for immediate threat containment.
+5. **Visualization:** The Flask-based dashboard fetches this processed data to present a real-time SOC view.
+
+### 📊 Logic Flow Diagram
+```text
+[ Endpoints ] --------> [ Wazuh Manager ] 
+(Win/Linux)    (Logs)   (Rule Engine)
+                            |
+                            v
+[ Snort NIDS ] -------> [ alerts.json ] <------- [ alert_analyzer.py ]
+(Net Traffic)  (Alerts)     |                      (Auto-Ban Engine)
+                            v
+                    [ CogniSOC Dashboard ]
+                       (Flask / UI)
+
 ## 📸 Dashboard Preview
 <img width="1280" height="800" alt="Screenshot From 2026-04-21 18-32-16" src="https://github.com/user-attachments/assets/f21b334e-d172-4313-8d97-283f9e807c42" />
 
